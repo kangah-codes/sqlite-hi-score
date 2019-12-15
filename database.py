@@ -1,129 +1,133 @@
-"""
-Database module for storing game highscores
-"""
-
-__author__ = 'Joshua Akangah'
+__author__ = "Joshua Akangah"
 
 import sqlite3
+import datetime
 
-
-class Database:
-    """
-    Database class
-    """
-
-    def __init__(self, name='scores.sqlite'):
+class HighScoreModel:
+    def __init__(self, name="game.db"):
         """
-        Init method
-        :param name: Preferred name of database file to create
-        BY default it is set to scores.db
+        init method
+        params:
+            name: name of the database
+        return:
+            None
         """
-        try:
-            self.name = name
-            self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-            self.cursor = self.conn.cursor()
-            self.conn.commit()
+        self.name = name
+        self.connection = sqlite3.connect(self.name)
+        self.cursor = self.connection.cursor()
 
-        except sqlite3.OperationalError:
-            raise sqlite3.OperationalError('Could not connect to the database file')
+        if self.connection:
+            self.connection.close()
 
-        finally:
-            self.conn.close()
-
-    def create_table(self, name):
+    def create_tables(self):
         """
-        Method to create a table in the database
-        :param name: Name of table
-        :return: Bool
+        function to create database tables
+        params:
+            None
+        return: True, sqlite3.OperationalError, Exception
         """
         try:
-            self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-            self.cursor = self.conn.cursor()
-            self.cursor.execute(
-                '''
-                CREATE TABLE {} (ID INTEGER PRIMARY KEY AUTOINCREMENT, SCORE INT NOT NULL)
-                '''.format(name)
-            )
+            self.connection = sqlite3.connect(self.name)
+            self.cursor = self.connection.cursor()
+
+            self.cursor.execute("CREATE TABLE GAME_DATA (SCORE INTEGER NOT NULL, DATEOF DATE NOT NULL) ")
+            self.connection.commit()
             return True
 
-        except sqlite3.OperationalError:
-            return False
+        except sqlite3.OperationalError as e:
+            return e
 
         finally:
-            self.conn.close()
+            if self.connection:
+                self.connection.close()
 
-    def get_length(self, table):
+    def add_score(self, score, date=datetime.datetime.today().date()):
         """
-        Method to return number of items in a table
-        :param table: Table name
-        :return: int
+        Add scores to the database, date is automatically filled in
+        params:
+            score: score to add
+            date: date of adding the score
+        return:
+            True, sqlite3.OperationalError
         """
-        self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-        self.cursor = self.conn.cursor()
-        str_all = "SELECT COUNT(*) FROM {}".format(table)
-        self.cursor.execute(str_all)
-        return self.cursor.fetchone()[0]
-
-    def insert(self, score, table_name):
-        """
-        Metthod to insert items into the database
-        :param date: Date when the score was made
-        :param score: Score to insert into SCORE column
-        :param table_name: Table name
-        :return: Bool
-        """
-        insert = "INSERT INTO {} (SCORE) VALUEs (%s)".format(table_name)
         try:
-            self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-            self.cursor = self.conn.cursor()
-            self.cursor.execute(insert % (score))
-            self.conn.commit()
+            self.connection = sqlite3.connect(self.name)
+            self.cursor = self.connection.cursor()
+
+            self.cursor.execute("INSERT INTO GAME_DATA (SCORE, DATEOF) VALUES (?, ?)", (score, date))
+            self.connection.commit()
             return True
 
-        except sqlite3.OperationalError:
-            return False
+        except sqlite3.OperationalError as e:
+            return e
 
         finally:
-            self.conn.close()
+            if self.connection:
+                self.connection.close()
 
-    def update_data(self, table, score, ids):
+    def get_scores(self):
         """
-        Method to change records of an existing item in the database table
-        :param table: Table name
-        :param score: ScoreValue to update into the table
-        :param ids: ID of item
-        :param date: Date to insert
-        :return: Bool
+        returns a list of all scores in the database
+        params:
+            None
+        return:
+            list, sqlite3.OperationalError
         """
-        self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-        self.cursor = self.conn.cursor()
-        str_update = "UPDATE {} SET SCORE={} WHERE ID={}".format(table, score, ids)
-
         try:
-            self.cursor.execute(str_update)
-            self.conn.commit()
+            self.connection = sqlite3.connect(self.name)
+            self.cursor = self.connection.cursor()
+
+            self.cursor.execute("SELECT * FROM GAME_DATA")
+            return self.cursor.fetchall()
+
+        except sqlite3.OperationalError as e:
+            return e
+
+        finally:
+            if self.connection:
+                self.connection.close()
+
+    def get_max_score(self):
+        """
+        return the highest score in the database
+        params:
+            None
+        return:
+            list, sqlite3.OperationalError
+        """
+        try:
+            self.connection = sqlite3.connect(self.name)
+            self.cursor = self.connection.cursor()
+
+            self.cursor.execute("SELECT * FROM GAME_DATA")
+            return max(self.cursor.fetchall())
+
+        except sqlite3.OperationalError as e:
+            return e
+
+        finally:
+            if self.connection:
+                self.connection.close()
+
+    def delete_score(self, score):
+        """
+        delete a particular score from the database
+        params:
+            score: score to delete
+        return:
+            True, sqlite3.OperationalError, Exception
+        """
+        try:
+            self.connection = sqlite3.connect(self.name)
+            self.cursor = self.connection.cursor()
+
+            self.cursor.execute("DELETE FROM GAME_DATA WHERE SCORE=?", (score,))
+            self.connection.commit()
             return True
 
-        except IndexError:
-            return False
+        except sqlite3.OperationalError as e:
+            return e
 
         finally:
-            self.conn.close()
-
-    def max(self, table):
-        self.conn = sqlite3.connect(self.name, detect_types=sqlite3.PARSE_DECLTYPES)
-        self.cursor = self.conn.cursor()
-        str_selected = "SELECT SCORE FROM {table}".format(table=table)
-        collected = []
-        try:
-            self.cursor = self.cursor.execute(str_selected)
-            for i in self.cursor:
-                collected.append(i)
-
-            return max(collected)[0]
-
-        except sqlite3.OperationalError:
-            return False
-
-        finally:
-            self.conn.close()
+            if self.connection:
+                self.connection.close()
